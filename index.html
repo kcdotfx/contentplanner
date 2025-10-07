@@ -7,33 +7,43 @@
     <link rel="stylesheet" href="./styles.css">
         <link rel="stylesheet" href="./logo.css">
         <link rel="stylesheet" href="./themes.css">
-        <script type="module">
-            // Import Firebase SDK
-            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-            import { getFirestore, doc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+            <script type="module">
+                // Import Firebase SDK
+                import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+                import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-analytics.js";
+                import { getFirestore, doc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-            // Your Firebase config
-            const firebaseConfig = {
-                apiKey: "YOUR_API_KEY",
-                authDomain: "my-webapp.firebaseapp.com",
-                projectId: "my-webapp",
-            };
+                // Your web app's Firebase configuration
+                const firebaseConfig = {
+                    apiKey: "AIzaSyDebheTLt_J2jlfurtCypzk1w1Ticy0KXk",
+                    authDomain: "kcdotfxcontentplanner.firebaseapp.com",
+                    projectId: "kcdotfxcontentplanner",
+                    storageBucket: "kcdotfxcontentplanner.firebasestorage.app",
+                    messagingSenderId: "586247354847",
+                    appId: "1:586247354847:web:0e70ec5b4fcc9006cb6c6a",
+                    measurementId: "G-1MMC8Z1FHR"
+                };
 
-            // Initialize Firebase
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
+                // Initialize Firebase
+                const app = initializeApp(firebaseConfig);
+                const analytics = getAnalytics(app);
+                const db = getFirestore(app);
 
-            // Example: add data
-            async function addContent() {
-                await setDoc(doc(collection(db, "content")), {
-                    title: "Hello World",
-                    timestamp: Date.now()
-                });
-                console.log("Added!");
-            }
+                // Example: add data (triggered once on load)
+                async function addContent() {
+                    try {
+                        await setDoc(doc(collection(db, "content")), {
+                            title: "Hello World",
+                            timestamp: Date.now()
+                        });
+                        console.log("Added!");
+                    } catch (err) {
+                        console.warn('Firestore write failed:', err);
+                    }
+                }
 
-            addContent();
-        </script>
+                addContent();
+            </script>
 </head>
 <body>
     <button id="mobileToggle" class="mobile-toggle" onclick="toggleSidebar()" aria-controls="sidebar" aria-expanded="false">☰</button>
