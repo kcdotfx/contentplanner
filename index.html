@@ -11,7 +11,7 @@
                 // Import Firebase SDK
                 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
                 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-analytics.js";
-                import { getFirestore, doc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+                import { getFirestore, doc, setDoc, getDocs, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
                 // Your web app's Firebase configuration
                 const firebaseConfig = {
@@ -29,20 +29,28 @@
                 const analytics = getAnalytics(app);
                 const db = getFirestore(app);
 
-                // Example: add data (triggered once on load)
-                async function addContent() {
-                    try {
-                        await setDoc(doc(collection(db, "content")), {
-                            title: "Hello World",
-                            timestamp: Date.now()
-                        });
-                        console.log("Added!");
-                    } catch (err) {
-                        console.warn('Firestore write failed:', err);
-                    }
-                }
+                        // Example helper functions (triggered by UI)
+                        async function addTestDoc() {
+                            try {
+                                const ref = await addDoc(collection(db, 'test'), { message: 'Hello Firestore', timestamp: Date.now() });
+                                console.log('Added test doc:', ref.id);
+                                alert('Added test doc: ' + ref.id);
+                            } catch (err) {
+                                console.error('addTestDoc failed', err);
+                                alert('Add failed: ' + err.message);
+                            }
+                        }
 
-                addContent();
+                        async function readTestDocs() {
+                            try {
+                                const snap = await getDocs(collection(db, 'test'));
+                                snap.forEach(d => console.log(d.id, d.data()));
+                                alert('Read ' + snap.size + ' docs (see console)');
+                            } catch (err) {
+                                console.error('readTestDocs failed', err);
+                                alert('Read failed: ' + err.message);
+                            }
+                        }
             </script>
 </head>
 <body>
@@ -149,6 +157,8 @@
                     <button class="btn btn-secondary" onclick="openNewIdeaModal()">💡 New Idea</button>
                     <button class="btn btn-secondary" onclick="showPage('calendar')">📅 View Calendar</button>
                     <button class="btn btn-secondary" onclick="exportData()">💾 Export Data</button>
+                    <button class="btn btn-secondary" onclick="addTestDoc()">🧪 Add Test Doc</button>
+                    <button class="btn btn-secondary" onclick="readTestDocs()">📖 Read Test Docs</button>
                 </div>
             </div>
         </div>
