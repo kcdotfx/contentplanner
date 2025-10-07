@@ -5,8 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KCDOTFX Dashboard</title>
     <link rel="stylesheet" href="./styles.css">
-    <link rel="stylesheet" href="./logo.css">
-    <link rel="stylesheet" href="./themes.css">
+        <link rel="stylesheet" href="./logo.css">
+        <link rel="stylesheet" href="./themes.css">
+        <script type="module">
+            // Import Firebase SDK
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+            import { getFirestore, doc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+            // Your Firebase config
+            const firebaseConfig = {
+                apiKey: "YOUR_API_KEY",
+                authDomain: "my-webapp.firebaseapp.com",
+                projectId: "my-webapp",
+            };
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+
+            // Example: add data
+            async function addContent() {
+                await setDoc(doc(collection(db, "content")), {
+                    title: "Hello World",
+                    timestamp: Date.now()
+                });
+                console.log("Added!");
+            }
+
+            addContent();
+        </script>
 </head>
 <body>
     <button id="mobileToggle" class="mobile-toggle" onclick="toggleSidebar()" aria-controls="sidebar" aria-expanded="false">☰</button>
