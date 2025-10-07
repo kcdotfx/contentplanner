@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCDOTFX Dashboard</title>
+    <style>
+        /* Reset */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Base */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed; left: 0; top: 0; width: 260px; height: 100vh;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 30px 20px; overflow-y: auto; transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.2s; z-index: 1000;
+        }
+        .sidebar.mobile-hidden { transform: translateX(-100%); }
+        .logo { font-size: 1.8em; font-weight:800; background: linear-gradient(135deg, var(--primary-1), var(--primary-2)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:30px; text-align:center; }
+        .nav-item { padding:15px 20px; margin-bottom:10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:12px; font-size:0.95em; color:var(--text); transition: all 0.25s; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); }
+        .nav-item.active { background: linear-gradient(135deg, var(--primary-1), var(--primary-2)); }
+
+        .mobile-toggle { display:none; position: fixed; top:20px; left:20px; z-index:1001; background: linear-gradient(135deg, var(--primary-1), var(--primary-2)); border:none; padding:12px 16px; border-radius:10px; color:var(--text); font-size:1.1em; }
+
+        /* overlay for mobile */
+        .overlay { position:fixed; inset:0; background: rgba(0,0,0,0.45); z-index:999; opacity:0; pointer-events:none; transition:opacity .25s; }
+        .overlay.active { opacity:1; pointer-events:auto; }
+
+        .sidebar-close { display:none; position:absolute; top:12px; right:12px; background:transparent; border:none; color:var(--text); font-size:1.6em; }
+        @media (max-width:768px) { .sidebar-close { display:block; } .mobile-toggle { display:block; } }
+
+        /* Main content */
+        .main-content { margin-left: 260px; padding: 40px; min-height: 100vh; }
+
+        /* Search area */
+        .search-bar { position: sticky; top:0; background: var(--search-bg); padding:20px 0; margin-bottom:30px; z-index:200; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .search-wrap { width:100%; max-width:600px; margin:0 auto; position:relative; }
+        .search-input { width:100%; max-width:600px; padding:15px 20px; border-radius:12px; background: rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); color:var(--text); }
+        .search-input:focus { outline:none; border-color: var(--primary-1); }
+        .search-results { position:absolute; top: calc(100% + 8px); left:0; right:0; background:var(--search-bg); border:1px solid var(--card-border); border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.6); z-index:1200; max-height:320px; overflow:auto; padding:6px; }
+        .search-result-item { padding:10px 12px; border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; gap:12px; }
+        .search-result-item:hover, .search-result-item[aria-selected="true"] { background: rgba(255,255,255,0.03); }
+        .search-result-type { color: var(--primary-1); font-weight:600; }
+
+        /* Cards and small widgets */
+        .card { background: var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:16px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        .card .card-title { font-weight:700; margin-bottom:12px; }
+
+        /* Stats grid used on dashboard */
+        .stats-grid { display:grid; grid-template-columns: repeat(5, 1fr); gap:16px; margin-bottom:18px; }
+        .stat-card { background: var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:14px; }
+        .stat-value { font-weight:800; font-size:1.4rem; color: var(--primary-1); }
+        .stat-label { color: var(--muted); font-size:0.9rem; margin-top:6px; }
+
+        /* Status dropdown */
+        .dropdown-menu { position:absolute; top: calc(100% + 6px); left:0; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.12); overflow:hidden; min-width:180px; }
+
+        /* Progress, checklist, tabs */
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary-1) 0%, var(--primary-2) 100%); transition: width 0.3s; }
+        .checklist-item { background: rgba(0,0,0,0.3); padding:15px; border-radius:10px; display:flex; align-items:center; gap:15px; margin-bottom:10px; }
+        .checklist-item input[type="checkbox"] { width:22px; height:22px; cursor:pointer; accent-color: var(--primary-1); }
+        .checklist-item.completed { opacity:0.6; }
+        .tabs { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+        .tab { padding:10px 20px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; cursor:pointer; }
+
+        /* Modal and utilities */
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index:2000; align-items:center; justify-content:center; padding:20px; }
+        .modal.active { display:flex; }
+        .modal-content { background: var(--bg-solid); border:1px solid var(--card-border); border-radius:15px; padding:30px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; }
+        .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+        .modal-title { font-size:1.5em; font-weight:700; }
+        .modal-close { background:none; border:none; color:var(--muted); font-size:1.5em; cursor:pointer; }
+
+        .info-box { background: rgba(102,126,234,0.1); border:1px solid rgba(102,126,234,0.3); border-radius:10px; padding:15px; margin:15px 0; line-height:1.6; }
+
+        .reference-link { display:flex; align-items:center; gap:10px; background: rgba(0,0,0,0.03); padding:12px 15px; border-radius:8px; margin-bottom:10px; border-left:3px solid var(--primary-1); }
+        .reference-link a { color: var(--primary-1); text-decoration:none; flex:1; }
+        .reference-link a:hover { text-decoration:underline; }
+
+        .filter-chips { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+        .filter-chip { padding:8px 16px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:20px; cursor:pointer; font-size:0.9em; transition: all 0.3s; }
+        .filter-chip.active { background: var(--primary-1); border-color: var(--primary-1); color: white; }
+
+        .post-card { padding:14px; border-radius:10px; background: rgba(0,0,0,0.03); border:1px solid rgba(0,0,0,0.02); margin-bottom:12px; cursor:pointer; }
+        .post-header { display:flex; justify-content:space-between; align-items:center; }
+        .post-status { padding:6px 10px; border-radius:8px; font-weight:700; }
+
+        .idea-card { background: rgba(0,0,0,0.03); border:1px solid rgba(0,0,0,0.02); border-radius:12px; padding:20px; margin-bottom:15px; }
+        .idea-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+        .idea-category { padding:6px 12px; border-radius:6px; font-size:0.8em; font-weight:600; }
+
+        .cat-design { background: var(--cat-design-bg); color: var(--cat-design); }
+        .cat-vlog { background: var(--cat-vlog-bg); color: var(--cat-vlog); }
+        .cat-tutorial { background: var(--cat-tutorial-bg); color: var(--cat-tutorial); }
+        .cat-other { background: var(--cat-other-bg); color: var(--cat-other); }
+
+        .form-group { margin-bottom:12px; }
+        .form-label { display:block; margin-bottom:6px; color:var(--muted); }
+        .form-input, .form-select, .form-textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--card-border); background: var(--input-bg); color: var(--text); }
+        .form-textarea { min-height:120px; }
+
+        .card-title { font-weight:700; margin-bottom:12px; }
+        .info-row { display:flex; gap:12px; align-items:center; }
+        .todo-item { padding:10px 12px; border-radius:8px; background: rgba(255,255,255,0.02); margin-bottom:8px; }
+        .idea-highlight { box-shadow: 0 10px 30px rgba(0,0,0,0.08); transform: translateY(-4px); }
+
+        /* Sidebar mobile behavior */
+        @media (max-width: 768px) {
+            .sidebar { width: 80%; max-width: 320px; height: 100vh; transform: translateX(-110%); }
+            .sidebar:not(.mobile-hidden) { transform: translateX(0); box-shadow: 0 20px 40px rgba(0,0,0,0.45); }
+            .mobile-toggle { display: block; }
+            .main-content { margin-left: 0; padding: 72px 16px 32px 16px; }
+            .page-title { font-size: 1.8em; }
+            .card { padding: 16px; }
+            .calendar-grid { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(80px, 1fr); gap:8px; overflow-x:auto; padding-bottom:8px; }
+            .calendar-day { padding: 8px 6px; min-height: 64px; font-size: 0.85em; }
+        }
+
+        /* Prevent body scroll when sidebar is open */
+        body.no-scroll { overflow: hidden; }
+
+        @media (max-width: 420px) { .logo { font-size:1.4em; margin-bottom:20px; } .nav-item { padding:12px 14px; font-size:0.95em; } .mobile-toggle { top:14px; left:12px; padding:10px 12px; } .stat-value { font-size:1.6em; } .page-title { font-size:1.5em; } }
+    </style>
+    <link rel="stylesheet" href="./logo.css">
+    <link rel="stylesheet" href="./themes.css">
+</head>
+<body>
+    <button id="mobileToggle" class="mobile-toggle" onclick="toggleSidebar()" aria-controls="sidebar" aria-expanded="false">☰</button>
+    <button id="themeToggle" class="mobile-toggle" style="left:86px; background: rgba(255,255,255,0.06); color: var(--text);" aria-label="Toggle theme" onclick="toggleTheme()">🌓</button>
+
+    <div class="sidebar" id="sidebar" role="navigation" aria-label="Main menu" aria-hidden="false">
+        <button class="sidebar-close" aria-label="Close menu" onclick="toggleSidebar()">×</button>
+        <div class="logo logo-replace">
+            <img src="./assets/logo-dark.svg" alt="KCDOTFX" class="logo-img logo-dark">
+            <img src="./assets/logo-light.svg" alt="KCDOTFX" class="logo-img logo-light">
+            <span class="visually-hidden">KCDOTFX</span>
+        </div>
+        
+        <div class="nav-item active" onclick="showPage('dashboard')">
+            <span>🏠</span>
+            <span>Dashboard</span>
+        </div>
+        
+        <div class="nav-item" onclick="showPage('calendar')">
+            <span>📅</span>
+            <span>Calendar</span>
+        </div>
+        
+        <div class="nav-item" onclick="showPage('posts')">
+            <span>📝</span>
+            <span>All Posts</span>
+        </div>
+        
+        <div class="nav-item" onclick="showPage('ideas')">
+            <span>💡</span>
+            <span>Ideas Vault</span>
+        </div>
+        
+        <div class="nav-item" onclick="showPage('settings')">
+            <span>⚙️</span>
+            <span>Settings</span>
+        </div>
+        
+        <!-- Sidebar footer: theme switch -->
+        <div class="sidebar-footer" aria-hidden="false">
+            <div class="theme-switch" role="group" aria-label="Theme switch">
+                <button id="themeLightBtn" class="theme-btn" onclick="setTheme('light')" aria-pressed="false" title="Light mode">🌤️</button>
+                <button id="themeDarkBtn" class="theme-btn" onclick="setTheme('dark')" aria-pressed="false" title="Dark mode">🌙</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay shown on mobile when sidebar is open -->
+    <div id="sidebarOverlay" class="overlay" onclick="toggleSidebar()" aria-hidden="true"></div>
+
+    <div class="main-content">
+        <div class="search-bar">
+            <div class="search-wrap">
+                <input type="text" class="search-input" id="globalSearch" placeholder="🔍 Search posts, ideas, scripts..." oninput="performSearch()" onkeydown="handleSearchKey(event)" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false">
+                <div id="searchResults" class="search-results" role="listbox" aria-label="Search results" hidden></div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD PAGE -->
+        <div id="dashboard" class="page active">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Your content command center</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalPosts">0</div>
+                    <div class="stat-label">Total Posts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="inProduction">0</div>
+                    <div class="stat-label">In Production</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="readyPosts">0</div>
+                    <div class="stat-label">Ready to Post</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="ideasCount">0</div>
+                    <div class="stat-label">Ideas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="daysUntilNext">-</div>
+                    <div class="stat-label">Days Until Next Post</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 Today's Focus</div>
+                <div id="todaysFocus"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🚀 Active Posts</div>
+                <div id="activePosts"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">⚡ Quick Actions</div>
+                <div style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <button class="btn btn-primary" onclick="openNewPostModal()">➕ New Post</button>
+                    <button class="btn btn-secondary" onclick="openNewIdeaModal()">💡 New Idea</button>
+                    <button class="btn btn-secondary" onclick="showPage('calendar')">📅 View Calendar</button>
+                    <button class="btn btn-secondary" onclick="exportData()">💾 Export Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALENDAR PAGE -->
+        <div id="calendar" class="page">
+            <div class="page-header">
+                <h1 class="page-title">Calendar</h1>
+                <p class="page-subtitle">Visual overview of your content schedule</p>
+            </div>
+
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <button class="btn btn-secondary btn-small" onclick="changeMonth(-1)">← Prev</button>
+                        <button class="btn btn-secondary btn-small" onclick="changeMonth(1)">Next →</button>
+                    </div>
+                    <h2 id="calendarMonth" style="font-size: 1.5em;">October 2025</h2>
+                    <button class="btn btn-primary btn-small" onclick="openNewPostModal()">➕ New Post</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 10px;">
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Sun</div>
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Mon</div>
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Tue</div>
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Wed</div>
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Thu</div>
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Fri</div>
+                    <div style="text-align: center; color: var(--muted); font-weight: 600; padding: 10px;">Sat</div>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+        </div>
+
+        <!-- ALL POSTS PAGE -->
+        <div id="posts" class="page">
+            <div class="page-header">
+                <h1 class="page-title">All Posts</h1>
+                <p class="page-subtitle">Manage your content library</p>
+            </div>
+
+            <div class="card">
+                <div class="filter-chips" id="statusFilters">
+                    <div class="filter-chip active" onclick="filterPosts('all', event)">All</div>
+                    <div class="filter-chip" onclick="filterPosts('draft', event)">Draft</div>
+                    <div class="filter-chip" onclick="filterPosts('production', event)">In Production</div>
+                    <div class="filter-chip" onclick="filterPosts('ready', event)">Ready</div>
+                    <div class="filter-chip" onclick="filterPosts('scheduled', event)">Scheduled</div>
+                    <div class="filter-chip" onclick="filterPosts('posted', event)">Posted</div>
+                </div>
+
+                <button class="btn btn-primary" onclick="openNewPostModal()" style="margin-bottom: 20px;">➕ Create New Post</button>
+
+                <div id="allPostsList"></div>
+            </div>
+        </div>
+
+        <!-- POST DETAIL PAGE -->
+        <div id="postDetail" class="page">
+            <div class="back-btn" onclick="showPage('posts')">← Back to Posts</div>
+
+            <div class="page-header">
+                <h1 class="page-title" id="postDetailTitle">Post Title</h1>
+                <p class="page-subtitle" id="postDetailMeta">Post metadata</p>
+            </div>
+
+            <div style="margin-bottom: 20px; display:flex; gap:12px; align-items:center;">
+                <div class="status-dropdown">
+                    <label class="form-label" for="statusDropdownBtn">Status</label>
+                    <div style="position:relative; display:inline-block;">
+                        <button id="statusDropdownBtn" class="btn btn-secondary btn-small" aria-haspopup="listbox" aria-expanded="false" onclick="toggleStatusDropdown(event)">
+                            <span id="currentStatusLabel">Status</span> ▾
+                        </button>
+                        <div id="statusDropdownMenu" class="dropdown-menu" role="listbox" aria-label="Post status" hidden>
+                            <div class="dropdown-item" role="option" data-status="draft" tabindex="0" onclick="selectStatus('draft')">📝 Draft</div>
+                            <div class="dropdown-item" role="option" data-status="production" tabindex="0" onclick="selectStatus('production')">🎬 Production</div>
+                            <div class="dropdown-item" role="option" data-status="ready" tabindex="0" onclick="selectStatus('ready')">✅ Ready</div>
+                            <div class="dropdown-item" role="option" data-status="scheduled" tabindex="0" onclick="selectStatus('scheduled')">📅 Scheduled</div>
+                            <div class="dropdown-item" role="option" data-status="posted" tabindex="0" onclick="selectStatus('posted')">🚀 Posted</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-left: auto;">
+                    <button class="btn btn-secondary btn-small" onclick="duplicatePost()">📋 Duplicate</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="showPostTab('overview', event)">📊 Overview</div>
+                <div class="tab" onclick="showPostTab('script', event)">🎬 Script</div>
+                <div class="tab" onclick="showPostTab('shots', event)">📸 Shots</div>
+                <div class="tab" onclick="showPostTab('references', event)">🔗 References</div>
+                <div class="tab" onclick="showPostTab('notes', event)">📝 Notes</div>
+            </div>
+
+            <div id="post-overview" class="post-tab">
+                <div class="card">
+                    <div class="card-title">Production Progress</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="postProgress" style="width: 0%"></div>
+                    </div>
+                        <p style="text-align: center; margin: 10px 0; color: var(--muted);">
+                        <span id="postProgressText">0% Complete</span>
+                    </p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Checklist</div>
+                    <div id="postChecklist"></div>
+                </div>
+            </div>
+
+            <div id="post-script" class="post-tab" style="display: none;">
+                <div class="card">
+                    <div class="card-title">Script</div>
+                    <div class="info-box">
+                        <strong>💡 Script Tips:</strong> Start with a hook, keep it conversational, include timestamps, practice reading aloud
+                    </div>
+                    <div id="postScript" style="white-space: pre-wrap; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; line-height: 1.8;"></div>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="editPostScript()">✏️ Edit Script</button>
+                    <button class="btn btn-secondary" style="margin-top: 15px;" onclick="copyPostScript()">📋 Copy</button>
+                </div>
+            </div>
+
+            <div id="post-shots" class="post-tab" style="display: none;">
+                <div class="card">
+                    <div class="card-title">Shot List</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="shotsProgress" style="width: 0%"></div>
+                    </div>
+                    <p style="text-align: center; margin: 10px 0; color: var(--muted);">
+                        <span id="shotsProgressText">0/0 shots</span>
+                    </p>
+                    <div id="postShots"></div>
+                    <button class="btn btn-secondary" style="margin-top: 15px;" onclick="addShot()">➕ Add Shot</button>
+                </div>
+            </div>
+
+            <div id="post-references" class="post-tab" style="display: none;">
+                <div class="card">
+                    <div class="card-title">Reference Links</div>
+                    <p style="color: var(--muted); margin-bottom: 15px;">Save inspiration, examples, or resources for this post</p>
+                    <div id="postReferences"></div>
+                    <button class="btn btn-primary" onclick="addReference()">➕ Add Reference</button>
+                </div>
+            </div>
+
+            <div id="post-notes" class="post-tab" style="display: none;">
+                <div class="card">
+                    <div class="card-title">Production Notes</div>
+                    <textarea class="form-textarea" id="postNotes" placeholder="Track thoughts, changes, learnings..." style="min-height: 300px;"></textarea>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="savePostNotes()">💾 Save Notes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- IDEAS VAULT PAGE -->
+        <div id="ideas" class="page">
+            <div class="page-header">
+                <h1 class="page-title">Ideas Vault</h1>
+                <p class="page-subtitle">Capture every idea before it disappears</p>
+            </div>
+
+            <div class="card">
+                <button class="btn btn-primary" onclick="openNewIdeaModal()">💡 Add New Idea</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Your Ideas (<span id="ideasCounter">0</span>)</div>
+                <div class="filter-chips">
+                    <div class="filter-chip active" onclick="filterIdeas('all', event)">All</div>
+                    <div class="filter-chip" onclick="filterIdeas('design', event)">Design</div>
+                    <div class="filter-chip" onclick="filterIdeas('vlog', event)">Vlog</div>
+                    <div class="filter-chip" onclick="filterIdeas('tutorial', event)">Tutorial</div>
+                    <div class="filter-chip" onclick="filterIdeas('other', event)">Other</div>
+                </div>
+                <div id="ideasList"></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS PAGE -->
+        <div id="settings" class="page">
+            <div class="page-header">
+                <h1 class="page-title">Settings</h1>
+                <p class="page-subtitle">Manage your dashboard</p>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📱 Sync Across Devices</div>
+                <div class="info-box">
+                    Export your data to sync between phone and laptop
+                </div>
+                <div style="display: grid; gap: 10px;">
+                    <button class="btn btn-primary" onclick="exportData()">💾 Export All Data</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📂 Import Data</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">⚙️ Profile</div>
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" id="userName" value="Karan">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Instagram Handle</label>
+                    <input type="text" class="form-input" id="userHandle" value="@KCDOTFX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Niche</label>
+                    <input type="text" class="form-input" id="userNiche" value="Design & Content Creation">
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Save</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🗑️ Danger Zone</div>
+                <div class="info-box" style="background: rgba(244,67,54,0.1); border-color: rgba(244,67,54,0.3);">
+                    <strong>Warning:</strong> This will delete ALL data!
+                </div>
+                <button class="btn btn-secondary" style="background: rgba(244,67,54,0.2);" onclick="clearAllData()">🗑️ Clear All Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW POST MODAL -->
+    <div id="newPostModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Create New Post</h2>
+                <button class="modal-close" onclick="closeModal('newPostModal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" class="form-input" id="newPostTitle" placeholder="e.g., Day 2 - Design Process">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <select class="form-select" id="newPostType">
+                    <option value="reel">Reel</option>
+                    <option value="carousel">Carousel</option>
+                    <option value="story">Story</option>
+                    <option value="post">Post</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Target Date</label>
+                <input type="date" class="form-input" id="newPostDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-textarea" id="newPostDescription" placeholder="What's this about?"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="createNewPost()">Create Post</button>
+        </div>
+    </div>
+
+    <!-- NEW IDEA MODAL -->
+    <div id="newIdeaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">New Idea</h2>
+                <button class="modal-close" onclick="closeModal('newIdeaModal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" class="form-input" id="ideaTitle" placeholder="Quick title for your idea">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-textarea" id="ideaDescription" placeholder="Describe your idea..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="ideaCategory">
+                    <option value="design">Design</option>
+                    <option value="vlog">Vlog</option>
+                    <option value="tutorial">Tutorial</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="createNewIdea()">Save Idea</button>
+        </div>
+    </div>
+
+    <script>
+        let posts = [];
+        let ideas = [];
+        let currentPostId = null;
+        let currentMonth = new Date();
+        let currentFilter = 'all';
+        let currentIdeaFilter = 'all';
+
+        // Initialize
+        function init() {
+            loadData();
+            if (posts.length === 0) createDay1Post();
+            renderDashboard();
+            renderCalendar();
+            renderAllPosts();
+            renderIdeas();
+            loadSettings();
+            loadThemePreference();
+        }
+
+        // Ensure sidebar is hidden on mobile when the app loads
+        (function ensureMobileSidebarState() {
+            function apply() {
+                const sidebar = document.getElementById('sidebar');
+                if (!sidebar) return;
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('mobile-hidden');
+                } else {
+                    sidebar.classList.remove('mobile-hidden');
+                }
+                // sync overlay/aria states
+                if (typeof setOverlayState === 'function') setOverlayState();
+            }
+
+            // run on load and resize
+            window.addEventListener('load', apply);
+            window.addEventListener('resize', apply);
+        })();
+
+        // Theme management
+        function applyTheme(theme) {
+            document.body.classList.remove('theme-dark', 'theme-light');
+            if (theme === 'dark') document.body.classList.add('theme-dark');
+            else if (theme === 'light') document.body.classList.add('theme-light');
+            // update toggle aria-pressed
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.setAttribute('aria-pressed', theme === 'dark');
+            // update sidebar buttons
+            const lightBtn = document.getElementById('themeLightBtn');
+            const darkBtn = document.getElementById('themeDarkBtn');
+            if (lightBtn) lightBtn.setAttribute('aria-pressed', theme === 'light');
+            if (darkBtn) darkBtn.setAttribute('aria-pressed', theme === 'dark');
+        }
+
+        function toggleTheme() {
+            const current = localStorage.getItem('kcdotfx_theme');
+            if (current === 'light') setTheme('dark');
+            else if (current === 'dark') setTheme('light');
+            else {
+                // fallback to body class
+                if (document.body.classList.contains('theme-dark')) setTheme('light');
+                else setTheme('dark');
+            }
+        }
+
+        function setTheme(theme) {
+            localStorage.setItem('kcdotfx_theme', theme);
+            applyTheme(theme);
+        }
+
+        function loadThemePreference() {
+            const saved = localStorage.getItem('kcdotfx_theme');
+            if (saved) { applyTheme(saved); return; }
+
+            // Respect system preference
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(prefersDark ? 'dark' : 'light');
+        }
+
+        // Create Day 1 Post
+        function createDay1Post() {
+            const day1 = {
+                id: 'day1',
+                title: 'Day 1 - Introduction Video',
+                type: 'reel',
+                date: '2025-10-11',
+                status: 'production',
+                description: '30-32 seconds cinematic intro, no face reveal',
+                script: `[0-3 seconds]
+"What if I fail?"
+
+[3-8 seconds]
+"I've been asking myself that for seven years."
+
+[8-15 seconds]
+"I had the skills. I had ideas. But I kept hiding. Waiting to feel ready."
+"Four months ago, I quit my job."
+
+[15-22 seconds]
+"And I realized... the real failure isn't trying and falling short."
+"It's never starting at all."
+
+[22-28 seconds]
+"So this is me. No hiding. Design, content, stories—the whole journey."
+
+[28-32 seconds]
+"I'm Karan. This is KCDOTFX."
+"And if you're watching this... you're part of this now."
+
+TEXT ON SCREEN: "Day 1"`,
+                shots: [
+                    { id: 1, desc: 'Close-up: Hands shaking, holding phone', done: false },
+                    { id: 2, desc: 'Phone screen: Blank Instagram grid', done: false },
+                    { id: 3, desc: 'Back to camera at desk', done: false },
+                    { id: 4, desc: 'Hands on keyboard typing', done: false },
+                    { id: 5, desc: 'Over-shoulder: Design software', done: false },
+                    { id: 6, desc: 'Screen: Old project folders', done: false },
+                    { id: 7, desc: 'Coffee being poured', done: false },
+                    { id: 8, desc: 'Walking shot (legs/torso)', done: false },
+                    { id: 9, desc: 'Sunset establishing shot', done: false },
+                    { id: 10, desc: 'Hands adjusting camera', done: false },
+                    { id: 11, desc: 'Late night work', done: false },
+                    { id: 12, desc: 'Hands through hair', done: false },
+                    { id: 13, desc: 'Hands hit Post button', done: false }
+                ],
+                checklist: [
+                    { id: 'script', label: 'Script written', done: true },
+                    { id: 'filming', label: 'All footage filmed', done: false },
+                    { id: 'voiceover', label: 'Voiceover recorded', done: false },
+                    { id: 'roughcut', label: 'Rough cut', done: false },
+                    { id: 'edited', label: 'Final edit', done: false },
+                    { id: 'graded', label: 'Color graded', done: false },
+                    { id: 'exported', label: 'Exported', done: false }
+                ],
+                references: [],
+                notes: 'Production tips:\n- Golden hour: 7-9 AM or 5-7 PM\n- Shoot 4K 24fps\n- Music: 30-40% volume',
+                createdAt: new Date().toISOString()
+            };
+            posts.push(day1);
+            saveData();
+        }
+
+        // Navigation
+        function showPage(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(pageName).classList.add('active');
+            
+            const navMap = { dashboard: 0, calendar: 1, posts: 2, ideas: 3, settings: 4 };
+            document.querySelectorAll('.nav-item')[navMap[pageName]]?.classList.add('active');
+            
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('mobile-hidden');
+            }
+            
+            if (pageName === 'dashboard') renderDashboard();
+            if (pageName === 'calendar') renderCalendar();
+            if (pageName === 'posts') renderAllPosts();
+            if (pageName === 'ideas') renderIdeas();
+        }
+
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            if (!sb) return;
+            // toggle: if hidden, show (remove class); if shown, hide (add class)
+            if (sb.classList.contains('mobile-hidden')) sb.classList.remove('mobile-hidden');
+            else sb.classList.add('mobile-hidden');
+        }
+
+        // Sync overlay visibility with sidebar state
+        function setOverlayState() {
+            const sb = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (!sb || !overlay) return;
+            const isHidden = sb.classList.contains('mobile-hidden');
+
+            // overlay
+            if (!isHidden && window.innerWidth <= 768) {
+                overlay.classList.add('active');
+                overlay.setAttribute('aria-hidden', 'false');
+            } else {
+                overlay.classList.remove('active');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+
+            // ARIA: sidebar visibility and toggle button
+            const toggle = document.getElementById('mobileToggle');
+            if (isHidden) {
+                sb.setAttribute('aria-hidden', 'true');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+            } else {
+                sb.setAttribute('aria-hidden', 'false');
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        // decorate toggleSidebar to update overlay right after toggling
+        const _toggleSidebar = toggleSidebar;
+        toggleSidebar = function() {
+            _toggleSidebar();
+            setOverlayState();
+            // prevent background scroll when open on mobile
+            const sb = document.getElementById('sidebar');
+            if (sb && !sb.classList.contains('mobile-hidden') && window.innerWidth <= 768) {
+                document.body.classList.add('no-scroll');
+            } else {
+                document.body.classList.remove('no-scroll');
+            }
+        };
+
+        // Close sidebar (and overlay) when Escape pressed
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const sb = document.getElementById('sidebar');
+                if (sb && !sb.classList.contains('mobile-hidden')) {
+                    sb.classList.add('mobile-hidden');
+                    setOverlayState();
+                    document.body.classList.remove('no-scroll');
+                    // return focus to toggle button for accessibility
+                    const toggle = document.querySelector('.mobile-toggle');
+                    if (toggle) toggle.focus();
+                }
+            }
+        });
+
+        // Hide sidebar/overlay when navigation links are clicked (mobile)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    const sb = document.getElementById('sidebar');
+                    if (sb) sb.classList.add('mobile-hidden');
+                    setOverlayState();
+                    document.body.classList.remove('no-scroll');
+                    const toggle = document.querySelector('.mobile-toggle');
+                    if (toggle) toggle.focus();
+                }
+            });
+        });
+
+        // Focus trap for sidebar when open (mobile)
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Tab') return;
+            const sb = document.getElementById('sidebar');
+            if (!sb || sb.classList.contains('mobile-hidden') || window.innerWidth > 768) return;
+
+            const focusable = sb.querySelectorAll('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (e.shiftKey) { // Shift + Tab
+                if (document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else { // Tab
+                if (document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        });
+
+        // Keep overlay state in sync after resize
+        window.addEventListener('resize', setOverlayState);
+        window.addEventListener('load', setOverlayState);
+
+        // Dashboard
+        function renderDashboard() {
+            document.getElementById('totalPosts').textContent = posts.length;
+            document.getElementById('inProduction').textContent = posts.filter(p => p.status === 'production').length;
+            document.getElementById('readyPosts').textContent = posts.filter(p => p.status === 'ready').length;
+            document.getElementById('ideasCount').textContent = ideas.length;
+            
+            const nextPost = posts.filter(p => p.date && p.status !== 'posted')
+                .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+            if (nextPost) {
+                const days = Math.ceil((new Date(nextPost.date) - new Date()) / (1000 * 60 * 60 * 24));
+                document.getElementById('daysUntilNext').textContent = days > 0 ? days : '0';
+            }
+            
+            // Today's Focus
+            const focus = [];
+            const today = new Date().toISOString().split('T')[0];
+            
+            posts.forEach(post => {
+                if (post.date === today) {
+                    focus.push({ text: `📅 Post scheduled: ${post.title}`, urgent: true });
+                }
+                if (post.status === 'production') {
+                    const incomplete = post.checklist.filter(c => !c.done).length;
+                    if (incomplete > 0) {
+                        focus.push({ text: `🎬 ${post.title}: ${incomplete} tasks remaining`, urgent: false });
+                    }
+                }
+            });
+            
+            if (focus.length === 0) {
+                focus.push({ text: '✨ No urgent tasks. Great job!', urgent: false });
+            }
+            
+            document.getElementById('todaysFocus').innerHTML = focus.map(f => 
+                `<div class="todo-item ${f.urgent ? 'urgent' : ''}">${f.text}</div>`
+            ).join('');
+            
+            // Active Posts
+            const active = posts.filter(p => p.status !== 'posted' && p.status !== 'draft')
+                .map(post => `
+                    <div class="post-card" onclick="viewPost('${post.id}')">
+                        <div class="post-header">
+                            <div class="post-title">${post.title}</div>
+                            <div class="post-status status-${post.status}">${post.status}</div>
+                        </div>
+                        <div class="post-meta">📅 ${post.date || 'No date'} • ${post.type}</div>
+                    </div>
+                `).join('');
+            
+            document.getElementById('activePosts').innerHTML = active || 
+                '<p style="color: var(--muted); text-align: center; padding: 20px;">No active posts</p>';
+        }
+
+        // Calendar
+        function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendarMonth').textContent = `${monthNames[month]} ${year}`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date().toISOString().split('T')[0];
+            
+            let html = '';
+            
+            for (let i = 0; i < firstDay; i++) {
+                html += '<div class="calendar-day" style="opacity: 0.3;"></div>';
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayPosts = posts.filter(p => p.date === dateStr);
+                const isToday = dateStr === today;
+                
+                html += `
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${dayPosts.length > 0 ? 'has-post' : ''}" 
+                         onclick="viewCalendarDay('${dateStr}')">
+                        <div class="calendar-day-number">${day}</div>
+                        ${dayPosts.map(p => `<div class="calendar-post-dot" title="${p.title}"></div>`).join('')}
+                    </div>
+                `;
+            }
+            
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+
+        function changeMonth(delta) {
+            currentMonth.setMonth(currentMonth.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function viewCalendarDay(date) {
+            const dayPosts = posts.filter(p => p.date === date);
+            if (dayPosts.length === 1) {
+                viewPost(dayPosts[0].id);
+            } else if (dayPosts.length > 1) {
+                alert(`Posts on ${date}:\n${dayPosts.map(p => '• ' + p.title).join('\n')}`);
+            } else {
+                if (confirm(`No posts on ${date}. Create one?`)) {
+                    document.getElementById('newPostDate').value = date;
+                    openNewPostModal();
+                }
+            }
+        }
+
+        // All Posts
+        function renderAllPosts() {
+            let filtered = posts;
+            if (currentFilter !== 'all') {
+                filtered = posts.filter(p => p.status === currentFilter);
+            }
+            
+            const html = filtered.map(post => `
+                <div class="post-card" onclick="viewPost('${post.id}')">
+                    <div class="post-header">
+                        <div class="post-title">${post.title}</div>
+                        <div class="post-status status-${post.status}">${post.status}</div>
+                    </div>
+                    <div class="post-meta">
+                        📅 ${post.date || 'No date'} • ${post.type} • ${post.description || ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('allPostsList').innerHTML = html || 
+                '<p style="color: var(--muted); text-align: center; padding: 40px;">No posts found</p>';
+        }
+
+        function filterPosts(status, ev) {
+            currentFilter = status;
+            document.querySelectorAll('#statusFilters .filter-chip').forEach(c => c.classList.remove('active'));
+            if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+            renderAllPosts();
+        }
+
+        // View Post Detail
+        function viewPost(postId) {
+            currentPostId = postId;
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
+            
+            document.getElementById('postDetailTitle').textContent = post.title;
+            document.getElementById('postDetailMeta').textContent = `${post.type} • ${post.date || 'No date'} • Status: ${post.status}`;
+            
+            renderPostOverview(post);
+            renderPostScript(post);
+            renderPostShots(post);
+            renderPostReferences(post);
+            document.getElementById('postNotes').value = post.notes || '';
+            // update status dropdown label
+            updateCurrentStatusLabel();
+            
+            showPage('postDetail');
+            showPostTab('overview');
+        }
+
+        function showPostTab(tab, ev) {
+            document.querySelectorAll('.post-tab').forEach(t => t.style.display = 'none');
+            document.querySelectorAll('#postDetail .tab').forEach(t => t.classList.remove('active'));
+            
+            document.getElementById('post-' + tab).style.display = 'block';
+            if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+        }
+
+        function renderPostOverview(post) {
+            const total = post.checklist.length;
+            const done = post.checklist.filter(c => c.done).length;
+            const percent = Math.round((done / total) * 100);
+            
+            document.getElementById('postProgress').style.width = percent + '%';
+            document.getElementById('postProgressText').textContent = `${percent}% Complete (${done}/${total})`;
+            
+            const checklistHtml = post.checklist.map(item => `
+                <div class="checklist-item ${item.done ? 'completed' : ''}">
+                    <input type="checkbox" ${item.done ? 'checked' : ''} 
+                           onchange="toggleChecklistItem('${post.id}', '${item.id}')">
+                    <label>${item.label}</label>
+                </div>
+            `).join('');
+            
+            document.getElementById('postChecklist').innerHTML = checklistHtml;
+        }
+
+        function toggleChecklistItem(postId, itemId) {
+            const post = posts.find(p => p.id === postId);
+            const item = post.checklist.find(i => i.id === itemId);
+            item.done = !item.done;
+            saveData();
+            renderPostOverview(post);
+            renderDashboard();
+        }
+
+        function renderPostScript(post) {
+            document.getElementById('postScript').textContent = post.script || 'No script yet';
+        }
+
+        function editPostScript() {
+            const post = posts.find(p => p.id === currentPostId);
+            const div = document.getElementById('postScript');
+            
+            const textarea = document.createElement('textarea');
+            textarea.className = 'form-textarea';
+            textarea.style.minHeight = '400px';
+            textarea.value = post.script;
+            
+            div.innerHTML = '';
+            div.appendChild(textarea);
+            
+            const btnContainer = document.createElement('div');
+            btnContainer.style.marginTop = '15px';
+            
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-primary';
+            saveBtn.textContent = '💾 Save';
+            saveBtn.onclick = () => {
+                post.script = textarea.value;
+                saveData();
+                renderPostScript(post);
+                alert('✅ Script saved!');
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-secondary';
+            cancelBtn.textContent = '❌ Cancel';
+            cancelBtn.style.marginLeft = '10px';
+            cancelBtn.onclick = () => renderPostScript(post);
+            
+            btnContainer.appendChild(saveBtn);
+            btnContainer.appendChild(cancelBtn);
+            div.appendChild(btnContainer);
+        }
+
+        function copyPostScript() {
+            const post = posts.find(p => p.id === currentPostId);
+            navigator.clipboard.writeText(post.script).then(() => alert('✅ Copied!'));
+        }
+
+        function renderPostShots(post) {
+            const total = post.shots.length;
+            const done = post.shots.filter(s => s.done).length;
+            const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+            
+            document.getElementById('shotsProgress').style.width = percent + '%';
+            document.getElementById('shotsProgressText').textContent = `${done}/${total} shots`;
+            
+            const html = post.shots.map(shot => `
+                <div class="checklist-item ${shot.done ? 'completed' : ''}">
+                    <input type="checkbox" ${shot.done ? 'checked' : ''} 
+                           onchange="toggleShot('${post.id}', ${shot.id})">
+                    <label>${shot.desc}</label>
+                </div>
+            `).join('');
+            
+            document.getElementById('postShots').innerHTML = html;
+        }
+
+        function toggleShot(postId, shotId) {
+            const post = posts.find(p => p.id === postId);
+            const shot = post.shots.find(s => s.id === shotId);
+            shot.done = !shot.done;
+            saveData();
+            renderPostShots(post);
+        }
+
+        function addShot() {
+            const post = posts.find(p => p.id === currentPostId);
+            const desc = prompt('Shot description:');
+            if (desc) {
+                const newId = post.shots.length > 0 ? Math.max(...post.shots.map(s => s.id)) + 1 : 1;
+                post.shots.push({ id: newId, desc, done: false });
+                saveData();
+                renderPostShots(post);
+            }
+        }
+
+        function renderPostReferences(post) {
+            const html = post.references?.map((ref, i) => `
+                <div class="reference-link">
+                    <span>${ref.title}</span>
+                    <a href="${ref.url}" target="_blank">${ref.url}</a>
+                    <button class="btn btn-secondary btn-small" onclick="deleteReference(${i})">🗑️</button>
+                </div>
+            `).join('') || '<p style="color: var(--muted);">No references yet</p>';
+            
+            document.getElementById('postReferences').innerHTML = html;
+        }
+
+        function addReference() {
+            const post = posts.find(p => p.id === currentPostId);
+            const title = prompt('Reference title:');
+            if (!title) return;
+            const url = prompt('URL:');
+            if (!url) return;
+            
+            if (!post.references) post.references = [];
+            post.references.push({ title, url });
+            saveData();
+            renderPostReferences(post);
+        }
+
+        function deleteReference(index) {
+            const post = posts.find(p => p.id === currentPostId);
+            post.references.splice(index, 1);
+            saveData();
+            renderPostReferences(post);
+        }
+
+        function savePostNotes() {
+            const post = posts.find(p => p.id === currentPostId);
+            post.notes = document.getElementById('postNotes').value;
+            saveData();
+            alert('✅ Notes saved!');
+        }
+
+        function changePostStatus(status) {
+            const post = posts.find(p => p.id === currentPostId);
+            post.status = status;
+            saveData();
+            viewPost(currentPostId);
+            renderDashboard();
+            alert(`✅ Status changed to: ${status}`);
+        }
+
+        // Status dropdown helpers
+        function toggleStatusDropdown(ev) {
+            ev.stopPropagation();
+            const btn = document.getElementById('statusDropdownBtn');
+            const menu = document.getElementById('statusDropdownMenu');
+            if (!btn || !menu) return;
+            const open = !menu.hasAttribute('hidden');
+            if (open) {
+                menu.setAttribute('hidden', '');
+                btn.setAttribute('aria-expanded', 'false');
+            } else {
+                menu.removeAttribute('hidden');
+                btn.setAttribute('aria-expanded', 'true');
+                // focus first option
+                const first = menu.querySelector('.dropdown-item');
+                if (first) first.focus();
+            }
+        }
+
+        function selectStatus(status) {
+            // use existing changePostStatus to keep behavior consistent
+            changePostStatus(status);
+            // close menu
+            const menu = document.getElementById('statusDropdownMenu');
+            const btn = document.getElementById('statusDropdownBtn');
+            if (menu) menu.setAttribute('hidden', '');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            updateCurrentStatusLabel();
+        }
+
+        function updateCurrentStatusLabel() {
+            const label = document.getElementById('currentStatusLabel');
+            const post = posts.find(p => p.id === currentPostId);
+            if (!label) return;
+            if (!post) { label.textContent = 'Status'; return; }
+            const mapping = { draft: '📝 Draft', production: '🎬 Production', ready: '✅ Ready', scheduled: '📅 Scheduled', posted: '🚀 Posted' };
+            label.textContent = mapping[post.status] || post.status;
+        }
+
+        // close dropdown on outside click or Escape
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('statusDropdownMenu');
+            const btn = document.getElementById('statusDropdownBtn');
+            if (!menu || menu.hasAttribute('hidden')) return;
+            if (btn && btn.contains(e.target)) return;
+            menu.setAttribute('hidden', '');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+
+        document.addEventListener('keydown', function(e) {
+            const menu = document.getElementById('statusDropdownMenu');
+            if (!menu || menu.hasAttribute('hidden')) return;
+            const items = Array.from(menu.querySelectorAll('.dropdown-item'));
+            const active = document.activeElement;
+            const idx = items.indexOf(active);
+            if (e.key === 'Escape') {
+                menu.setAttribute('hidden', '');
+                document.getElementById('statusDropdownBtn')?.setAttribute('aria-expanded', 'false');
+                document.getElementById('statusDropdownBtn')?.focus();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = items[(idx + 1) % items.length] || items[0];
+                if (next) next.focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = items[(idx - 1 + items.length) % items.length] || items[items.length - 1];
+                if (prev) prev.focus();
+            } else if (e.key === 'Enter') {
+                if (active && active.classList.contains('dropdown-item')) {
+                    const status = active.dataset.status;
+                    selectStatus(status);
+                }
+            }
+        });
+
+        function duplicatePost() {
+            const post = posts.find(p => p.id === currentPostId);
+            const newPost = JSON.parse(JSON.stringify(post));
+            newPost.id = 'post-' + Date.now();
+            newPost.title = post.title + ' (Copy)';
+            newPost.status = 'draft';
+            newPost.date = '';
+            newPost.checklist.forEach(c => c.done = false);
+            newPost.shots.forEach(s => s.done = false);
+            posts.push(newPost);
+            saveData();
+            alert('✅ Post duplicated!');
+            renderAllPosts();
+            renderDashboard();
+        }
+
+        // New Post
+        function openNewPostModal() {
+            document.getElementById('newPostModal').classList.add('active');
+        }
+
+        function createNewPost() {
+            const title = document.getElementById('newPostTitle').value;
+            if (!title) return alert('Enter a title');
+            
+            const newPost = {
+                id: 'post-' + Date.now(),
+                title,
+                type: document.getElementById('newPostType').value,
+                date: document.getElementById('newPostDate').value,
+                status: 'draft',
+                description: document.getElementById('newPostDescription').value,
+                script: '[0-5 seconds]\nYour hook...\n\n[5-15 seconds]\nMain content...\n\n[15-25 seconds]\nCore message...\n\n[25-30 seconds]\nCloser...',
+                shots: [
+                    { id: 1, desc: 'Opening shot', done: false },
+                    { id: 2, desc: 'Main subject', done: false },
+                    { id: 3, desc: 'B-roll 1', done: false },
+                    { id: 4, desc: 'B-roll 2', done: false },
+                    { id: 5, desc: 'Close-up detail', done: false },
+                    { id: 6, desc: 'Closing shot', done: false }
+                ],
+                checklist: [
+                    { id: 'script', label: 'Script written', done: false },
+                    { id: 'filming', label: 'Footage filmed', done: false },
+                    { id: 'voiceover', label: 'Voiceover recorded', done: false },
+                    { id: 'roughcut', label: 'Rough cut', done: false },
+                    { id: 'edited', label: 'Final edit', done: false },
+                    { id: 'graded', label: 'Color graded', done: false },
+                    { id: 'exported', label: 'Exported', done: false }
+                ],
+                references: [],
+                notes: '',
+                createdAt: new Date().toISOString()
+            };
+            
+            posts.push(newPost);
+            saveData();
+            closeModal('newPostModal');
+            
+            document.getElementById('newPostTitle').value = '';
+            document.getElementById('newPostDate').value = '';
+            document.getElementById('newPostDescription').value = '';
+            
+            renderDashboard();
+            renderAllPosts();
+            viewPost(newPost.id);
+        }
+
+        // Ideas
+        function renderIdeas() {
+            let filtered = ideas;
+            if (currentIdeaFilter !== 'all') {
+                filtered = ideas.filter(i => i.category === currentIdeaFilter);
+            }
+            
+            document.getElementById('ideasCounter').textContent = filtered.length;
+            
+            const html = filtered.map(idea => `
+                <div id="idea-${idea.id}" class="idea-card">
+                    <div class="idea-header">
+                        <h3>${idea.title}</h3>
+                        <span class="idea-category cat-${idea.category}">${idea.category}</span>
+                    </div>
+                    <p style="color: var(--muted); line-height: 1.6;">${idea.description || 'No description'}</p>
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px; align-items: center;">
+                        <span style="color: var(--muted); font-size: 0.85em;">${new Date(idea.date).toLocaleDateString()}</span>
+                        <div>
+                            <button class="btn btn-secondary btn-small" onclick="convertIdeaToPost(${idea.id})">→ To Post</button>
+                            <button class="btn btn-secondary btn-small" onclick="deleteIdea(${idea.id})">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('') || '<p style="color: var(--muted); text-align: center; padding: 40px;">No ideas yet</p>';
+            
+            document.getElementById('ideasList').innerHTML = html;
+        }
+
+        function filterIdeas(category, ev) {
+            currentIdeaFilter = category;
+            document.querySelectorAll('#ideas .filter-chip').forEach(c => c.classList.remove('active'));
+            if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+            renderIdeas();
+        }
+
+        function openNewIdeaModal() {
+            document.getElementById('newIdeaModal').classList.add('active');
+        }
+
+        function createNewIdea() {
+            const title = document.getElementById('ideaTitle').value;
+            if (!title) return alert('Enter a title');
+            
+            ideas.push({
+                id: Date.now(),
+                title,
+                description: document.getElementById('ideaDescription').value,
+                category: document.getElementById('ideaCategory').value,
+                date: new Date().toISOString()
+            });
+            
+            saveData();
+            closeModal('newIdeaModal');
+            
+            document.getElementById('ideaTitle').value = '';
+            document.getElementById('ideaDescription').value = '';
+            
+            renderIdeas();
+            renderDashboard();
+            alert('💡 Idea saved!');
+        }
+
+        function deleteIdea(id) {
+            if (!confirm('Delete this idea?')) return;
+            ideas = ideas.filter(i => i.id !== id);
+            saveData();
+            renderIdeas();
+            renderDashboard();
+        }
+
+        function convertIdeaToPost(ideaId) {
+            const idea = ideas.find(i => i.id === ideaId);
+            if (!idea) return;
+            
+            document.getElementById('newPostTitle').value = idea.title;
+            document.getElementById('newPostDescription').value = idea.description;
+            openNewPostModal();
+            
+            if (confirm('Delete idea after converting to post?')) {
+                deleteIdea(ideaId);
+            }
+        }
+
+        // Search (interactive results)
+        function performSearch() {
+            const q = document.getElementById('globalSearch').value.trim().toLowerCase();
+            const container = document.getElementById('searchResults');
+            if (!container) return;
+
+            if (!q || q.length < 2) {
+                container.hidden = true;
+                container.innerHTML = '';
+                document.getElementById('globalSearch').setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            const results = [];
+
+            posts.forEach(post => {
+                if (post.title.toLowerCase().includes(q) || post.script?.toLowerCase().includes(q) || post.description?.toLowerCase().includes(q)) {
+                    results.push({ type: 'post', item: post });
+                }
+            });
+
+            ideas.forEach(idea => {
+                if (idea.title.toLowerCase().includes(q) || idea.description?.toLowerCase().includes(q)) {
+                    results.push({ type: 'idea', item: idea });
+                }
+            });
+
+            renderSearchResults(results);
+        }
+
+        function renderSearchResults(results) {
+            const container = document.getElementById('searchResults');
+            const input = document.getElementById('globalSearch');
+            if (!container || !input) return;
+
+            if (!results || results.length === 0) {
+                container.innerHTML = `<div style="padding:12px;color:var(--muted);">No results</div>`;
+                container.hidden = false;
+                input.setAttribute('aria-expanded', 'true');
+                return;
+            }
+
+            container.innerHTML = results.map((r, idx) => {
+                if (r.type === 'post') {
+                    const snippet = getSnippet(r.item, document.getElementById('globalSearch').value);
+                    return `<div role="option" tabindex="0" data-idx="${idx}" data-type="post" data-id="${r.item.id}" class="search-result-item">
+                        <div>
+                            <div style="font-weight:700;">${escapeHtml(r.item.title)}</div>
+                            <div style="color:var(--muted); font-size:0.9em;">${r.item.type} • ${r.item.date || 'No date'}</div>
+                            <div style="color:var(--muted); font-size:0.9em; margin-top:6px;">${escapeHtml(snippet)}</div>
+                        </div>
+                        <div class="search-result-type">Post</div>
+                    </div>`;
+                }
+                const snippet = getSnippet(r.item, document.getElementById('globalSearch').value);
+                return `<div role="option" tabindex="0" data-idx="${idx}" data-type="idea" data-id="${r.item.id}" class="search-result-item">
+                    <div>
+                        <div style="font-weight:700;">${escapeHtml(r.item.title)}</div>
+                        <div style="color:var(--muted); font-size:0.9em;">${r.item.category}</div>
+                        <div style="color:var(--muted); font-size:0.9em; margin-top:6px;">${escapeHtml(snippet)}</div>
+                    </div>
+                    <div class="search-result-type">Idea</div>
+                </div>`;
+            }).join('');
+
+            // bind click/key handlers
+            container.querySelectorAll('.search-result-item').forEach(el => {
+                el.addEventListener('click', () => openSearchResult(el));
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') openSearchResult(el);
+                });
+            });
+
+            container.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+            // select first by default
+            const first = container.querySelector('.search-result-item');
+            if (first) first.setAttribute('aria-selected', 'true');
+        }
+
+        function openSearchResult(el) {
+            const type = el.dataset.type;
+            const id = el.dataset.id;
+            const container = document.getElementById('searchResults');
+            container.hidden = true;
+            document.getElementById('globalSearch').setAttribute('aria-expanded', 'false');
+
+            if (type === 'post') {
+                viewPost(id);
+            } else if (type === 'idea') {
+                showPage('ideas');
+                // scroll to the idea and highlight it
+                setTimeout(() => {
+                    const node = document.getElementById('idea-' + id);
+                    if (node) {
+                        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        node.classList.add('idea-highlight');
+                        setTimeout(() => node.classList.remove('idea-highlight'), 1800);
+                    }
+                }, 150);
+            }
+        }
+
+        function getSnippet(item, query) {
+            if (!query) return '';
+            const q = query.toLowerCase();
+            if (item.script) {
+                const s = item.script.toLowerCase();
+                const idx = s.indexOf(q);
+                if (idx >= 0) return item.script.substring(Math.max(0, idx - 20), Math.min(item.script.length, idx + 80)).replace(/\n/g, ' ');
+            }
+            if (item.description) {
+                const s = item.description.toLowerCase();
+                const idx = s.indexOf(q);
+                if (idx >= 0) return item.description.substring(Math.max(0, idx - 20), Math.min(item.description.length, idx + 80));
+            }
+            if (item.title && item.title.toLowerCase().includes(q)) return item.title;
+            return '';
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&"'<>]/g, s => ({'&':'&amp;','"':'&quot;',"'":"&#39;",'<':'&lt;','>':'&gt;'})[s]);
+        }
+
+        function handleSearchKey(e) {
+            const container = document.getElementById('searchResults');
+            if (!container || container.hidden) return;
+
+            const items = Array.from(container.querySelectorAll('.search-result-item'));
+            if (!items.length) return;
+
+            const currentIndex = items.findIndex(i => i.getAttribute('aria-selected') === 'true');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = items[(currentIndex + 1) % items.length];
+                if (next) {
+                    items.forEach(i => i.removeAttribute('aria-selected'));
+                    next.setAttribute('aria-selected', 'true');
+                    next.focus();
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = items[(currentIndex - 1 + items.length) % items.length];
+                if (prev) {
+                    items.forEach(i => i.removeAttribute('aria-selected'));
+                    prev.setAttribute('aria-selected', 'true');
+                    prev.focus();
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentIndex >= 0) openSearchResult(items[currentIndex]);
+            } else if (e.key === 'Escape') {
+                container.hidden = true;
+                document.getElementById('globalSearch').setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        // Close search results when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrap = document.querySelector('.search-wrap');
+            const container = document.getElementById('searchResults');
+            if (!wrap || !container) return;
+            if (!wrap.contains(e.target)) {
+                container.hidden = true;
+                document.getElementById('globalSearch').setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Settings
+        function saveSettings() {
+            const settings = {
+                name: document.getElementById('userName').value,
+                handle: document.getElementById('userHandle').value,
+                niche: document.getElementById('userNiche').value
+            };
+            localStorage.setItem('kcdotfx_settings', JSON.stringify(settings));
+            alert('✅ Settings saved!');
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('kcdotfx_settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                document.getElementById('userName').value = settings.name || 'Karan';
+                document.getElementById('userHandle').value = settings.handle || '@KCDOTFX';
+                document.getElementById('userNiche').value = settings.niche || 'Design & Content Creation';
+            }
+        }
+
+        // Data Management
+        function saveData() {
+            localStorage.setItem('kcdotfx_posts', JSON.stringify(posts));
+            localStorage.setItem('kcdotfx_ideas', JSON.stringify(ideas));
+        }
+
+        function loadData() {
+            posts = JSON.parse(localStorage.getItem('kcdotfx_posts') || '[]');
+            ideas = JSON.parse(localStorage.getItem('kcdotfx_ideas') || '[]');
+        }
+
+        function exportData() {
+            const data = {
+                posts,
+                ideas,
+                settings: JSON.parse(localStorage.getItem('kcdotfx_settings') || '{}'),
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `kcdotfx-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            alert('✅ Data exported!');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (data.posts) localStorage.setItem('kcdotfx_posts', JSON.stringify(data.posts));
+                    if (data.ideas) localStorage.setItem('kcdotfx_ideas', JSON.stringify(data.ideas));
+                    if (data.settings) localStorage.setItem('kcdotfx_settings', JSON.stringify(data.settings));
+                    
+                    alert('✅ Data imported! Reloading...');
+                    location.reload();
+                } catch (error) {
+                    alert('❌ Error importing data');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if (!confirm('Delete ALL data? This cannot be undone!')) return;
+            if (!confirm('Really sure?')) return;
+            
+            localStorage.clear();
+            alert('Data cleared. Reloading...');
+            location.reload();
+        }
+
+        // Modal Management
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Auto-save
+        setInterval(saveData, 30000);
+
+        // Initialize
+        window.onload = init;
+    </script>
+</body>
+</html>

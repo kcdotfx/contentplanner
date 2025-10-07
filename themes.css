@@ -1,0 +1,176 @@
+/* Theme variables and overrides for light/dark mode */
+:root {
+  --bg: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+  --bg-solid: #0a0a0a;
+  --text: #e0e0e0;
+  --muted: #888;
+  --card-bg: rgba(255,255,255,0.03);
+  --card-border: rgba(255,255,255,0.06);
+  --sidebar-bg: rgba(0,0,0,0.6);
+  --sidebar-border: rgba(255,255,255,0.08);
+  --search-bg: #151522;
+  --input-bg: rgba(0,0,0,0.28);
+  --input-border: rgba(255,255,255,0.08);
+  --primary-1: #FE6C3B;
+  --primary-2: #F6D9DB;
+  --danger: #f44336;
+  --success: #4caf50;
+  /* Semantic status and category colors */
+  --status-draft: #ffc107;
+  --status-draft-bg: rgba(255, 193, 7, 0.2);
+  --status-production: #FE6C3B;
+  --status-production-bg: rgba(254, 108, 59, 0.2);
+  --status-ready: #4caf50;
+  --status-ready-bg: rgba(76, 175, 80, 0.2);
+  --status-scheduled: #FE6C3B;
+  --status-scheduled-bg: rgba(254, 108, 59, 0.2);
+  --status-posted: #9c27b0;
+  --status-posted-bg: rgba(156, 39, 176, 0.2);
+  /* category color aliases (can be customized per theme) */
+  --cat-design: var(--status-production);
+  --cat-design-bg: var(--status-production-bg);
+  --cat-vlog: var(--status-draft);
+  --cat-vlog-bg: var(--status-draft-bg);
+  --cat-tutorial: var(--status-ready);
+  --cat-tutorial-bg: var(--status-ready-bg);
+  --cat-other: var(--status-posted);
+  --cat-other-bg: var(--status-posted-bg);
+}
+
+body.theme-dark {
+  --bg: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+  --bg-solid: #0a0a0a;
+  --text: #e0e0e0;
+  --muted: #b0b0b0;
+  --card-bg: rgba(255,255,255,0.04);
+  --card-border: rgba(255,255,255,0.08);
+  --sidebar-bg: rgba(0,0,0,0.6);
+  --sidebar-border: rgba(255,255,255,0.08);
+  --search-bg: #151522;
+  --input-bg: rgba(0,0,0,0.28);
+  --input-border: rgba(255,255,255,0.08);
+  /* status/category colors for dark */
+  --status-draft: #ffc107;
+  --status-draft-bg: rgba(255, 193, 7, 0.2);
+  --status-production: #FE6C3B;
+  --status-production-bg: rgba(254, 108, 59, 0.2);
+  --status-ready: #4caf50;
+  --status-ready-bg: rgba(76, 175, 80, 0.2);
+  --status-scheduled: #FE6C3B;
+  --status-scheduled-bg: rgba(254, 108, 59, 0.2);
+  --status-posted: #9c27b0;
+  --status-posted-bg: rgba(156, 39, 176, 0.2);
+  --cat-design: var(--status-production);
+  --cat-design-bg: var(--status-production-bg);
+  --cat-vlog: var(--status-draft);
+  --cat-vlog-bg: var(--status-draft-bg);
+  --cat-tutorial: var(--status-ready);
+  --cat-tutorial-bg: var(--status-ready-bg);
+  --cat-other: var(--status-posted);
+  --cat-other-bg: var(--status-posted-bg);
+}
+
+body.theme-light {
+  --bg: #f6f7fb;
+  --bg-solid: #f6f7fb;
+  --text: #1a1a2e;
+  --muted: #555;
+  --card-bg: #ffffff;
+  --card-border: rgba(26,26,46,0.06);
+  --sidebar-bg: #ffffff;
+  --sidebar-border: rgba(26,26,46,0.06);
+  --search-bg: #ffffff;
+  --input-bg: #f2f4f8;
+  --input-border: rgba(26,26,46,0.06);
+  --primary-1: #FE6C3B;
+  --primary-2: #F6D9DB;
+  /* status/category colors for light */
+  --status-draft: #ffc107;
+  --status-draft-bg: rgba(255, 193, 7, 0.12);
+  --status-production: #FE6C3B;
+  --status-production-bg: rgba(254,108,59,0.08);
+  --status-ready: #2e8b3d;
+  --status-ready-bg: rgba(46,139,61,0.08);
+  --status-scheduled: #FE6C3B;
+  --status-scheduled-bg: rgba(254,108,59,0.08);
+  --status-posted: #8e44ad;
+  --status-posted-bg: rgba(142,68,173,0.08);
+  --cat-design: var(--status-production);
+  --cat-design-bg: var(--status-production-bg);
+  --cat-vlog: var(--status-draft);
+  --cat-vlog-bg: var(--status-draft-bg);
+  --cat-tutorial: var(--status-ready);
+  --cat-tutorial-bg: var(--status-ready-bg);
+  --cat-other: var(--status-posted);
+  --cat-other-bg: var(--status-posted-bg);
+}
+
+/* High-level overrides using variables to minimize changes inside the big single-file CSS */
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.sidebar {
+  background: var(--sidebar-bg) !important;
+  border-right: 1px solid var(--sidebar-border) !important;
+}
+
+.search-bar {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* Ensure status dropdown floats above content and uses a solid background */
+#statusDropdownMenu, .dropdown-menu {
+  background: var(--bg-solid) !important;
+  border: 1px solid var(--card-border) !important;
+  z-index: 3000 !important;
+}
+
+.card, .post-card, .idea-card, .todo-item, .reference-link, .checklist-item {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+}
+
+.search-input, .form-input, .form-textarea, .form-select {
+  background: var(--input-bg) !important;
+  border: 1px solid var(--input-border) !important;
+  color: var(--text) !important;
+}
+
+.page-subtitle, .post-meta, .stat-label, .info-box, .reference-link a {
+  color: var(--muted) !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-1) 0%, var(--primary-2) 100%) !important;
+  color: white !important;
+}
+
+/* Respect user prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
+/* Sidebar footer and theme buttons */
+.sidebar-footer {
+  position: absolute;
+  bottom: 18px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.theme-switch { display: inline-flex; gap: 8px; }
+.theme-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.05em;
+}
+.theme-btn[aria-pressed="true"] { background: rgba(254,108,59,0.12); border-color: var(--primary-1); }

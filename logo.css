@@ -1,0 +1,17 @@
+.logo-img { display: block; max-width: 160px; height: auto; margin: 0 auto 18px; }
+.logo-replace { text-indent: -9999px; overflow: hidden; position: relative; }
+@media (max-width: 420px) { .logo-img { max-width: 130px; } }
+
+.visually-hidden {
+	position: absolute !important;
+	height: 1px; width: 1px;
+	overflow: hidden;
+	clip: rect(1px, 1px, 1px, 1px);
+	white-space: nowrap;
+}
+
+/* show/hide logo variants depending on theme */
+body.theme-dark .logo-dark { display: block; }
+body.theme-dark .logo-light { display: none; }
+body.theme-light .logo-dark { display: none; }
+body.theme-light .logo-light { display: block; }
