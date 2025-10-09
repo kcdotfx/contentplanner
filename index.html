@@ -860,7 +860,10 @@ TEXT ON SCREEN: "Day 1"`,
                 <div class="post-card" onclick="viewPost('${post.id}')">
                     <div class="post-header">
                         <div class="post-title">${post.title}</div>
-                        <div class="post-status status-${post.status}">${post.status}</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="post-status status-${post.status}">${post.status}</div>
+                            <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); deletePost('${post.id}')">🗑️</button>
+                        </div>
                     </div>
                     <div class="post-meta">
                         📅 ${post.date || 'No date'} • ${post.type} • ${post.description || ''}
@@ -898,6 +901,25 @@ TEXT ON SCREEN: "Day 1"`,
             
             showPage('postDetail');
             showPostTab('overview');
+        }
+
+        // Delete a post by id (localStorage-backed)
+        function deletePost(postId) {
+            if (!postId) return;
+            const post = posts.find(p => p.id === postId);
+            if (!post) return alert('Post not found');
+            if (!confirm(`Delete post "${post.title}"? This cannot be undone.`)) return;
+
+            posts = posts.filter(p => p.id !== postId);
+            saveData();
+            renderAllPosts();
+            renderDashboard();
+
+            // if we were viewing the deleted post, go back to posts list
+            if (currentPostId === postId) {
+                currentPostId = null;
+                showPage('posts');
+            }
         }
 
         function showPostTab(tab, ev) {
