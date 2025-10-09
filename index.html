@@ -11,7 +11,7 @@
                 // Import Firebase SDK
                 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
                 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-analytics.js";
-                import { getFirestore, doc, setDoc, getDocs, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+                import { getFirestore, doc, setDoc, getDocs, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
                 // Your web app's Firebase configuration
                 const firebaseConfig = {
@@ -28,25 +28,27 @@
                 const app = initializeApp(firebaseConfig);
                 const analytics = getAnalytics(app);
                 const db = getFirestore(app);
-                        // expose for other scripts in the page
-                        window.db = db;
+                                // expose for other scripts in the page
+                                window.db = db;
 
-                        // helper to load content collection into a UL with given id
-                        window.loadContent = async function(elementId = 'contentList') {
-                            try {
-                                const snap = await getDocs(collection(db, 'content'));
-                                const el = document.getElementById(elementId);
-                                if (!el) return;
-                                el.innerHTML = '';
-                                snap.forEach(d => {
-                                    const li = document.createElement('li');
-                                    li.textContent = d.data().title || '';
-                                    el.appendChild(li);
-                                });
-                            } catch (err) {
-                                console.error('loadContent failed', err);
-                            }
-                        };
+                                // Real-time listener for content collection
+                                (function attachContentListener() {
+                                    try {
+                                        const el = document.getElementById('contentList');
+                                        if (!el) return;
+                                        const q = collection(db, 'content');
+                                        onSnapshot(q, snapshot => {
+                                            el.innerHTML = '';
+                                            snapshot.forEach(d => {
+                                                const li = document.createElement('li');
+                                                li.textContent = d.data().title || '';
+                                                el.appendChild(li);
+                                            });
+                                        }, err => console.error('content onSnapshot error', err));
+                                    } catch (err) {
+                                        console.error('attachContentListener failed', err);
+                                    }
+                                })();
 
                         // Example helper functions (triggered by UI)
                         async function addTestDoc() {
@@ -1907,9 +1909,5 @@ TEXT ON SCREEN: "Day 1"`,
         window.onload = init;
     </script>
 </body>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.loadContent) window.loadContent('contentList');
-    });
-</script>
+<!-- real-time listener attaches itself during Firebase init; no DOMContentLoaded call needed -->
 </html>
